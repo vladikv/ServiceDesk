@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: service-desk
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/servicedesk}
+    username: ${DATABASE_USERNAME:servicedesk}
+    password: ${DATABASE_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  sla:
+    escalation-interval: ${SLA_ESCALATION_INTERVAL:60000}
+  security:
+    users:
+      - username: ${SERVICEDESK_REQUESTER_USERNAME:requester}
+        password: ${SERVICEDESK_REQUESTER_PASSWORD:}
+        role: REQUESTER
+      - username: ${SERVICEDESK_AGENT_USERNAME:agent}
+        password: ${SERVICEDESK_AGENT_PASSWORD:}
+        role: AGENT
+      - username: ${SERVICEDESK_ADMIN_USERNAME:admin}
+        password: ${SERVICEDESK_ADMIN_PASSWORD:}
+        role: ADMIN
