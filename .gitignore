@@ -1,0 +1,9 @@
+target/
+.idea/
+*.iml
+.DS_Store
+.env
+.vaadin/
+node_modules/
+src/main/frontend/generated/
+src/main/frontend/index.html
