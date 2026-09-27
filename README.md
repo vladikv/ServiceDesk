@@ -34,8 +34,8 @@ Flyway applies schema changes from `src/main/resources/db/migration`. Hibernate 
 - Requesters create requests and can see or comment on their own requests.
 - Agents and admins can search all requests, assign them, change their status, comment, and inspect audit history.
 - Status transitions are validated centrally in the request service.
-- SLA targets are 72 hours (low), 48 hours (normal), 24 hours (high), and 4 hours (urgent). Time in `WAITING_FOR_REQUESTER` pauses the SLA clock; active breaches are escalated one priority level and recorded in history.
-- Agents and admins see a basic status count and SLA escalation total.
+- All requests use one configurable SLA target, 24 hours by default (`SLA_TARGET_DURATION`, for example `48h` or `2d`), regardless of priority. Time in `WAITING_FOR_REQUESTER` pauses the SLA clock.
+- SLA breaches are recorded once in request history and flagged for agent/admin attention. Priority is not automatically changed. Agents and admins can filter breached requests and see the breach count.
 
 ## Tests
 

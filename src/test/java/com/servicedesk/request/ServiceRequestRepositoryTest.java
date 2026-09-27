@@ -28,12 +28,20 @@ class ServiceRequestRepositoryTest {
         requests.saveAndFlush(new ServiceRequest("VPN access", "Cannot connect remotely", "bob",
                 RequestPriority.HIGH, now.plusSeconds(1), now.plusSeconds(7200)));
 
-        assertThat(requests.search(RequestStatus.NEW, "alice", "laptop"))
+        assertThat(requests.search(RequestStatus.NEW, "alice", "laptop", false))
                 .extracting(ServiceRequest::getSubject)
                 .containsExactly("Laptop setup");
-        assertThat(requests.search(null, "alice", "vpn")).isEmpty();
-        assertThat(requests.search(null, null, "remotely"))
+        assertThat(requests.search(null, "alice", "vpn", false)).isEmpty();
+        assertThat(requests.search(null, null, "remotely", false))
                 .extracting(ServiceRequest::getSubject)
                 .containsExactly("VPN access");
+        assertThat(requests.search(null, null, null, true)).isEmpty();
+        ServiceRequest breached = new ServiceRequest("SLA breach", "Requires attention", "alice",
+                RequestPriority.LOW, now, now.minusSeconds(1));
+        breached.markSlaBreached(now);
+        requests.saveAndFlush(breached);
+        assertThat(requests.search(null, null, null, true))
+                .extracting(ServiceRequest::getSubject)
+                .containsExactly("SLA breach");
     }
 }

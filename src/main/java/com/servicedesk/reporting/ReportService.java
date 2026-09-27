@@ -31,7 +31,7 @@ public class ReportService {
         Map<RequestStatus, Long> byStatus = Arrays.stream(RequestStatus.values())
                 .collect(Collectors.toMap(status -> status,
                         status -> all.stream().filter(request -> request.getStatus() == status).count()));
-        long breachedOrEscalated = all.stream().filter(request -> request.getEscalatedAt() != null).count();
-        return new RequestReport(all.size(), byStatus, breachedOrEscalated);
+        long slaBreaches = all.stream().filter(request -> request.getSlaBreachedAt() != null).count();
+        return new RequestReport(all.size(), byStatus, slaBreaches);
     }
 }

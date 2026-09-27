@@ -7,6 +7,7 @@ import com.servicedesk.request.RequestService;
 import com.servicedesk.request.RequestStatus;
 import com.servicedesk.request.ServiceRequest;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -40,6 +41,7 @@ public class RequestView extends VerticalLayout {
     private final Grid<ServiceRequest> grid = new Grid<>(ServiceRequest.class, false);
     private final TextField search = new TextField("Search");
     private final ComboBox<RequestStatus> statusFilter = new ComboBox<>("Status");
+    private final Checkbox slaAttentionOnly = new Checkbox("SLA attention only");
     private final Button createButton = new Button("New request");
 
     public RequestView(
@@ -63,9 +65,10 @@ public class RequestView extends VerticalLayout {
         search.setPlaceholder("Subject, description, or assignee");
         statusFilter.setItems(RequestStatus.values());
         statusFilter.setClearButtonVisible(true);
+        slaAttentionOnly.setVisible(isAgentOrAdmin());
         Button apply = new Button("Apply filters", event -> refresh());
         createButton.addClickListener(event -> openCreateDialog());
-        HorizontalLayout filters = new HorizontalLayout(search, statusFilter, apply, createButton);
+        HorizontalLayout filters = new HorizontalLayout(search, statusFilter, slaAttentionOnly, apply, createButton);
         filters.setAlignItems(Alignment.END);
         add(header, filters, grid);
         setFlexGrow(1, grid);
@@ -73,7 +76,7 @@ public class RequestView extends VerticalLayout {
         if (isAgentOrAdmin()) {
             var summary = reports.summary(actor);
             add(new Span("Requests: " + summary.total()
-                    + " | SLA escalations: " + summary.breachedOrEscalated()));
+                    + " | SLA attention: " + summary.slaBreaches()));
         } else {
             createButton.setVisible(true);
         }
@@ -87,6 +90,10 @@ public class RequestView extends VerticalLayout {
         grid.addColumn(request -> valueOrDash(request.getAssignedAgentUsername())).setHeader("Assignee");
         grid.addColumn(ServiceRequest::getStatus).setHeader("Status");
         grid.addColumn(ServiceRequest::getPriority).setHeader("Priority");
+        grid.addColumn(request -> request.getSlaBreachedAt() == null
+                        ? "Due " + DATE_FORMAT.format(request.getSlaDueAt())
+                        : "BREACHED — attention needed")
+                .setHeader("SLA");
         grid.addColumn(request -> DATE_FORMAT.format(request.getUpdatedAt())).setHeader("Updated");
         grid.addComponentColumn(request -> new Button("Open", event -> openDetails(request.getId())))
                 .setHeader("Details")
@@ -94,7 +101,7 @@ public class RequestView extends VerticalLayout {
     }
 
     private void refresh() {
-        grid.setItems(requests.search(actor, statusFilter.getValue(), search.getValue()));
+        grid.setItems(requests.search(actor, statusFilter.getValue(), search.getValue(), slaAttentionOnly.getValue()));
     }
 
     private void openCreateDialog() {
@@ -134,7 +141,11 @@ public class RequestView extends VerticalLayout {
                 new Span(request.getDescription()),
                 new Span("Requester: " + request.getRequesterUsername()),
                 new Span("Priority: " + request.getPriority()),
-                new Span("SLA target: " + DATE_FORMAT.format(request.getSlaDueAt())));
+                new Span("SLA target: " + DATE_FORMAT.format(request.getSlaDueAt())),
+                new Span(request.getSlaBreachedAt() == null
+                        ? "SLA status: within target"
+                        : "SLA status: breached at " + DATE_FORMAT.format(request.getSlaBreachedAt())
+                                + " — needs agent attention"));
         if (isAgentOrAdmin()) {
             ComboBox<String> assignee = new ComboBox<>("Assign to");
             assignee.setItems(securityUsers.getAssignableUsernames());

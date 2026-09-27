@@ -10,6 +10,7 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
             select request from ServiceRequest request
             where (:status is null or request.status = :status)
               and (:requester is null or request.requesterUsername = :requester)
+              and (:slaAttentionOnly = false or request.slaBreachedAt is not null)
               and (:query is null or
                    lower(request.subject) like lower(concat('%', :query, '%')) or
                    lower(request.description) like lower(concat('%', :query, '%')) or
@@ -19,7 +20,8 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
     List<ServiceRequest> search(
             @Param("status") RequestStatus status,
             @Param("requester") String requester,
-            @Param("query") String query);
+            @Param("query") String query,
+            @Param("slaAttentionOnly") boolean slaAttentionOnly);
 
-    List<ServiceRequest> findByStatusInAndEscalatedAtIsNull(List<RequestStatus> statuses);
+    List<ServiceRequest> findByStatusInAndSlaBreachedAtIsNull(List<RequestStatus> statuses);
 }

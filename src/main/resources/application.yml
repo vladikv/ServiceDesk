@@ -21,7 +21,8 @@ server:
 
 app:
   sla:
-    escalation-interval: ${SLA_ESCALATION_INTERVAL:60000}
+    target-duration: ${SLA_TARGET_DURATION:24h}
+    breach-check-interval: ${SLA_BREACH_CHECK_INTERVAL:60000}
   security:
     users:
       - username: ${SERVICEDESK_REQUESTER_USERNAME:requester}

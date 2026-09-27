@@ -1,6 +1,7 @@
 package com.servicedesk.request;
 
 import com.servicedesk.config.SecurityUsersProperties;
+import com.servicedesk.config.SlaProperties;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,6 +24,7 @@ public class RequestService {
     private final RequestCommentRepository comments;
     private final RequestAuditRepository audit;
     private final SecurityUsersProperties securityUsers;
+    private final SlaProperties slaProperties;
     private final Clock clock;
 
     @Autowired
@@ -30,8 +32,9 @@ public class RequestService {
             ServiceRequestRepository requests,
             RequestCommentRepository comments,
             RequestAuditRepository audit,
-            SecurityUsersProperties securityUsers) {
-        this(requests, comments, audit, securityUsers, Clock.systemUTC());
+            SecurityUsersProperties securityUsers,
+            SlaProperties slaProperties) {
+        this(requests, comments, audit, securityUsers, slaProperties, Clock.systemUTC());
     }
 
     RequestService(
@@ -39,20 +42,29 @@ public class RequestService {
             RequestCommentRepository comments,
             RequestAuditRepository audit,
             SecurityUsersProperties securityUsers,
+            SlaProperties slaProperties,
             Clock clock) {
         this.requests = requests;
         this.comments = comments;
         this.audit = audit;
         this.securityUsers = securityUsers;
+        this.slaProperties = slaProperties;
         this.clock = clock;
     }
 
     @Transactional(readOnly = true)
-    public List<ServiceRequest> search(Authentication actor, RequestStatus status, String searchText) {
+    public List<ServiceRequest> search(
+            Authentication actor,
+            RequestStatus status,
+            String searchText,
+            boolean slaAttentionOnly) {
         String username = requireUsername(actor);
+        if (slaAttentionOnly && !hasRole(actor, "AGENT", "ADMIN")) {
+            throw new AccessDeniedException("Only agents and admins may filter by SLA attention.");
+        }
         String requester = hasRole(actor, "AGENT", "ADMIN") ? null : username;
         String query = searchText == null || searchText.isBlank() ? null : searchText.trim();
-        return requests.search(status, requester, query);
+        return requests.search(status, requester, query, slaAttentionOnly);
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +91,7 @@ public class RequestService {
                 username,
                 priority == null ? RequestPriority.NORMAL : priority,
                 now,
-                now.plus(slaTarget(priority == null ? RequestPriority.NORMAL : priority))));
+                now.plus(slaProperties.getTargetDuration())));
         addAudit(request, username, "CREATED", request.getSubject(), now);
         return request;
     }
@@ -156,17 +168,21 @@ public class RequestService {
     }
 
     @Transactional
-    public int escalateOverdue() {
+    public int markSlaBreaches() {
         Instant now = clock.instant();
-        List<ServiceRequest> overdue = requests.findByStatusInAndEscalatedAtIsNull(ACTIVE_STATUSES).stream()
-                .filter(request -> request.isSlaBreachedAt(now))
+        List<ServiceRequest> overdue = requests.findByStatusInAndSlaBreachedAtIsNull(ACTIVE_STATUSES).stream()
+                .filter(request -> request.isSlaOverdueAt(now))
                 .toList();
         for (ServiceRequest request : overdue) {
-            request.escalate(now);
+            request.markSlaBreached(now);
             ServiceRequest saved = requests.save(request);
-            addAudit(saved, "system", "SLA_BREACHED", "Priority escalated to " + saved.getPriority(), now);
+            addAudit(saved, "system", "SLA_BREACHED", "Request flagged for agent attention.", now);
         }
         return overdue.size();
+    }
+
+    public Duration slaTargetDuration() {
+        return slaProperties.getTargetDuration();
     }
 
     public List<RequestStatus> allowedTransitions(ServiceRequest request) {
@@ -223,15 +239,6 @@ public class RequestService {
             throw new IllegalArgumentException(label + " is required.");
         }
         return value.trim();
-    }
-
-    private static Duration slaTarget(RequestPriority priority) {
-        return switch (priority) {
-            case LOW -> Duration.ofHours(72);
-            case NORMAL -> Duration.ofHours(48);
-            case HIGH -> Duration.ofHours(24);
-            case URGENT -> Duration.ofHours(4);
-        };
     }
 
     private static Map<RequestStatus, List<RequestStatus>> transitions() {

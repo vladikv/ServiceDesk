@@ -56,7 +56,7 @@ public class ServiceRequest {
     @Column(nullable = false)
     private long slaPausedSeconds;
 
-    private Instant escalatedAt;
+    private Instant slaBreachedAt;
 
     @Version
     private long version;
@@ -97,14 +97,15 @@ public class ServiceRequest {
         updatedAt = now;
     }
 
-    public void escalate(Instant now) {
-        priority = priority.escalated();
-        escalatedAt = now;
+    public void markSlaBreached(Instant now) {
+        if (slaBreachedAt == null) {
+            slaBreachedAt = now;
+        }
         updatedAt = now;
     }
 
-    public boolean isSlaBreachedAt(Instant now) {
-        return slaPausedAt == null && escalatedAt == null
+    public boolean isSlaOverdueAt(Instant now) {
+        return slaPausedAt == null && slaBreachedAt == null
                 && now.isAfter(slaDueAt.plusSeconds(slaPausedSeconds));
     }
 
@@ -156,7 +157,7 @@ public class ServiceRequest {
         return slaPausedSeconds;
     }
 
-    public Instant getEscalatedAt() {
-        return escalatedAt;
+    public Instant getSlaBreachedAt() {
+        return slaBreachedAt;
     }
 }

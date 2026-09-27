@@ -1,15 +1,19 @@
 package com.servicedesk.request;
 
 import com.servicedesk.config.SecurityUsersProperties;
+import com.servicedesk.config.SlaProperties;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -27,6 +31,7 @@ class RequestServiceTest {
     private RequestCommentRepository comments;
     private RequestAuditRepository audit;
     private SecurityUsersProperties securityUsers;
+    private SlaProperties slaProperties;
     private RequestService service;
 
     @BeforeEach
@@ -35,7 +40,9 @@ class RequestServiceTest {
         comments = mock(RequestCommentRepository.class);
         audit = mock(RequestAuditRepository.class);
         securityUsers = users("agent", "AGENT", "admin", "ADMIN");
-        service = new RequestService(requests, comments, audit, securityUsers, Clock.fixed(NOW, ZoneOffset.UTC));
+        slaProperties = new SlaProperties();
+        service = new RequestService(
+                requests, comments, audit, securityUsers, slaProperties, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -65,25 +72,57 @@ class RequestServiceTest {
     }
 
     @Test
-    void breachedRequestEscalatesAndIsRecorded() {
+    void breachedRequestIsFlaggedWithoutChangingPriority() {
         ServiceRequest request = request(RequestStatus.IN_PROGRESS, NOW.minusSeconds(49 * 3600L), NOW.minusSeconds(3600));
-        when(requests.findByStatusInAndEscalatedAtIsNull(any())).thenReturn(List.of(request));
+        when(requests.findByStatusInAndSlaBreachedAtIsNull(any())).thenReturn(List.of(request));
         when(requests.save(request)).thenReturn(request);
 
-        assertEquals(1, service.escalateOverdue());
-        assertEquals(RequestPriority.HIGH, request.getPriority());
-        assertEquals(NOW, request.getEscalatedAt());
-        verify(audit).save(any(RequestAuditEntry.class));
+        assertEquals(1, service.markSlaBreaches());
+        assertEquals(RequestPriority.NORMAL, request.getPriority());
+        assertEquals(NOW, request.getSlaBreachedAt());
+        verify(audit).save(argThat(entry -> entry.getAction().equals("SLA_BREACHED")
+                && entry.getDetails().contains("attention")));
     }
 
     @Test
-    void pausedRequestDoesNotEscalate() {
+    void breachIsRecordedOnlyOnce() {
+        ServiceRequest request = request(RequestStatus.IN_PROGRESS, NOW.minusSeconds(49 * 3600L), NOW.minusSeconds(3600));
+        request.markSlaBreached(NOW.minusSeconds(60));
+        when(requests.findByStatusInAndSlaBreachedAtIsNull(any())).thenReturn(List.of());
+
+        assertEquals(0, service.markSlaBreaches());
+        verify(audit, never()).save(any(RequestAuditEntry.class));
+    }
+
+    @Test
+    void pausedRequestDoesNotBreachSla() {
         ServiceRequest request = request(RequestStatus.WAITING_FOR_REQUESTER, NOW.minusSeconds(49 * 3600L), NOW.minusSeconds(3600));
         request.changeStatus(RequestStatus.WAITING_FOR_REQUESTER, NOW.minusSeconds(1800));
-        when(requests.findByStatusInAndEscalatedAtIsNull(any())).thenReturn(List.of(request));
+        when(requests.findByStatusInAndSlaBreachedAtIsNull(any())).thenReturn(List.of(request));
 
-        assertEquals(0, service.escalateOverdue());
+        assertEquals(0, service.markSlaBreaches());
         verify(audit, never()).save(any(RequestAuditEntry.class));
+    }
+
+    @Test
+    void configuredSharedTargetAppliesRegardlessOfPriority() {
+        assertEquals(Duration.ofHours(24), service.slaTargetDuration());
+        when(requests.save(any(ServiceRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ServiceRequest lowPriority = service.create(user("alice", "REQUESTER"), "Low", "Description", RequestPriority.LOW);
+        ServiceRequest urgent = service.create(user("alice", "REQUESTER"), "Urgent", "Description", RequestPriority.URGENT);
+
+        assertEquals(NOW.plus(Duration.ofHours(24)), lowPriority.getSlaDueAt());
+        assertEquals(lowPriority.getSlaDueAt(), urgent.getSlaDueAt());
+        assertEquals(RequestPriority.LOW, lowPriority.getPriority());
+        assertEquals(RequestPriority.URGENT, urgent.getPriority());
+    }
+
+    @Test
+    void requesterCannotFilterForAgentSlaAttention() {
+        assertThrows(AccessDeniedException.class,
+                () -> service.search(user("alice", "REQUESTER"), null, null, true));
+        verify(requests, never()).search(any(), any(), any(), anyBoolean());
     }
 
     @Test

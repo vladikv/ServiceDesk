@@ -19,7 +19,7 @@ import com.vaadin.flow.spring.security.VaadinWebSecurity;
 
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(SecurityUsersProperties.class)
+@EnableConfigurationProperties({SecurityUsersProperties.class, SlaProperties.class})
 public class SecurityConfig extends VaadinWebSecurity {
     private static final Set<String> ALLOWED_ROLES = Set.of("REQUESTER", "AGENT", "ADMIN");
 
