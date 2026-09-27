@@ -5,6 +5,8 @@ import com.servicedesk.config.SlaProperties;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
@@ -123,6 +125,13 @@ class RequestServiceTest {
         assertThrows(AccessDeniedException.class,
                 () -> service.search(user("alice", "REQUESTER"), null, null, true));
         verify(requests, never()).search(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void blankSearchTextUsesNonNullEmptyStringForRepositoryQuery() {
+        service.search(user("agent", "AGENT"), null, "  ", false);
+
+        verify(requests).search(isNull(), isNull(), eq(""), eq(false));
     }
 
     @Test

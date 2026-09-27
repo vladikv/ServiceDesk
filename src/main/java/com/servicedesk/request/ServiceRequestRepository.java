@@ -11,7 +11,7 @@ public interface ServiceRequestRepository extends JpaRepository<ServiceRequest, 
             where (:status is null or request.status = :status)
               and (:requester is null or request.requesterUsername = :requester)
               and (:slaAttentionOnly = false or request.slaBreachedAt is not null)
-              and (:query is null or
+              and (:query = '' or
                    lower(request.subject) like lower(concat('%', :query, '%')) or
                    lower(request.description) like lower(concat('%', :query, '%')) or
                    lower(coalesce(request.assignedAgentUsername, '')) like lower(concat('%', :query, '%')))
