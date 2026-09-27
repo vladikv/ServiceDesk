@@ -63,7 +63,7 @@ public class RequestService {
             throw new AccessDeniedException("Only agents and admins may filter by SLA attention.");
         }
         String requester = hasRole(actor, "AGENT", "ADMIN") ? null : username;
-        String query = searchText == null || searchText.isBlank() ? null : searchText.trim();
+        String query = searchText == null || searchText.isBlank() ? "" : searchText.trim();
         return requests.search(status, requester, query, slaAttentionOnly);
     }
 
