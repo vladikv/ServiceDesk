@@ -3,6 +3,8 @@ target/
 *.iml
 .DS_Store
 .env
+.env.*
+!.env.example
 .vaadin/
 node_modules/
 src/main/frontend/generated/

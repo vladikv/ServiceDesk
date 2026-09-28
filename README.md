@@ -4,31 +4,47 @@ Java 21 internal IT service desk MVP built as a modular monolith with Spring Boo
 
 ## Prerequisites
 
-- JDK 21
-- Maven 3.9+
-- PostgreSQL 15+
+- Docker Desktop with Docker Compose v2+
 
-Create a database and role (or configure `DATABASE_URL`, `DATABASE_USERNAME`, and `DATABASE_PASSWORD` for an existing database):
+## Run with Docker Compose
 
-```sql
-CREATE USER servicedesk WITH PASSWORD 'change-this-local-password';
-CREATE DATABASE servicedesk OWNER servicedesk;
-```
-
-On the first startup, set the bootstrap administrator credentials and database password. The bootstrap admin is created only when the users table is empty; later restarts do not recreate or overwrite it. For PowerShell:
+Docker Compose builds the Java application image, starts PostgreSQL, waits for the database health check, then starts the app. The database uses a named volume so its data survives container recreation. Set secrets in the current PowerShell session before the first start:
 
 ```powershell
+$env:DATABASE_PASSWORD = 'choose-a-unique-database-password'
 $env:BOOTSTRAP_ADMIN_USERNAME = 'admin'
-$env:BOOTSTRAP_ADMIN_PASSWORD = 'use-a-unique-long-password'
-$env:DATABASE_PASSWORD = 'change-this-local-password'
-.\mvnw.cmd spring-boot:run
+$env:BOOTSTRAP_ADMIN_PASSWORD = 'choose-a-unique-admin-password'
+docker compose up --build -d
+docker compose ps
+docker compose logs -f app
 ```
 
-The bootstrap password is required only when no account exists; startup fails with a clear message if the users table is empty and either bootstrap value is missing. Usernames are normalized to lowercase. Passwords must be at least 12 characters and no more than 72 UTF-8 bytes because BCrypt limits the input size. Secrets are read from environment variables and should never be committed to the repository.
+The app is available at <http://localhost:8080>. Sign in with the bootstrap admin. The bootstrap account is created only when the user table is empty; its credentials are needed only on the first run. If using a `.env` file instead of session variables, keep it untracked and do not put real secrets in source control.
 
-There is no public registration. Sign in with the bootstrap admin, open **Manage users**, and create requester, agent, or admin accounts. Administrators can list accounts, enable/disable them, and reset passwords. Usernames are immutable and accounts are not deleted so historic request and audit references remain meaningful. The last active admin cannot be disabled.
+Useful commands:
 
-Flyway applies schema changes from `src/main/resources/db/migration`. Hibernate validates the migrated schema at startup. Passwords are stored as BCrypt hashes; disabled accounts cannot authenticate or be assigned to new requests.
+```powershell
+docker compose logs -f app       # Follow application logs
+docker compose stop              # Stop containers, keep database data
+docker compose down              # Remove containers/network, keep database data
+docker compose down -v            # Also delete the database volume and all stored data
+```
+
+The app health check uses Spring Boot's readiness endpoint. Compose does not start the app until PostgreSQL reports healthy. The health endpoint is unauthenticated for container probes and exposes only health information.
+
+On first startup, if the database is empty, both `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` are required. Usernames are normalized to lowercase. Passwords must be at least 12 characters and no more than 72 UTF-8 bytes because BCrypt limits the input size.
+
+There is no public registration. Open **Manage users** as the bootstrap admin to create requester, agent, or admin accounts. Administrators can list accounts, enable/disable them, and reset passwords. Usernames are immutable and accounts are not deleted so historic request and audit references remain meaningful. The last active admin cannot be disabled. Passwords are stored as BCrypt hashes; disabled accounts cannot authenticate or be assigned to new requests.
+
+Flyway applies schema changes from `src/main/resources/db/migration`. Hibernate validates the migrated schema at startup.
+
+## Run locally without Docker
+
+For local development without containers, install JDK 21, Maven 3.9+, and PostgreSQL 15+. Set `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `BOOTSTRAP_ADMIN_USERNAME`, and `BOOTSTRAP_ADMIN_PASSWORD`, then run:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
 
 ## MVP workflow
 
@@ -40,4 +56,4 @@ Flyway applies schema changes from `src/main/resources/db/migration`. Hibernate 
 
 ## Tests
 
-Run `mvn test`. Tests use an isolated in-memory database and do not require PostgreSQL.
+Run `.\mvnw.cmd test`. Tests use an isolated in-memory database and do not require PostgreSQL or Docker.
