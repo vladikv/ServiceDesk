@@ -1,11 +1,11 @@
 package com.servicedesk.ui;
 
-import com.servicedesk.config.SecurityUsersProperties;
 import com.servicedesk.reporting.ReportService;
 import com.servicedesk.request.RequestPriority;
 import com.servicedesk.request.RequestService;
 import com.servicedesk.request.RequestStatus;
 import com.servicedesk.request.ServiceRequest;
+import com.servicedesk.user.UserManagementService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -14,6 +14,7 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -36,7 +37,7 @@ public class RequestView extends VerticalLayout {
 
     private final RequestService requests;
     private final ReportService reports;
-    private final SecurityUsersProperties securityUsers;
+    private final UserManagementService userManagement;
     private final Authentication actor;
     private final Grid<ServiceRequest> grid = new Grid<>(ServiceRequest.class, false);
     private final TextField search = new TextField("Search");
@@ -47,16 +48,20 @@ public class RequestView extends VerticalLayout {
     public RequestView(
             RequestService requests,
             ReportService reports,
-            SecurityUsersProperties securityUsers) {
+            UserManagementService userManagement) {
         this.requests = requests;
         this.reports = reports;
-        this.securityUsers = securityUsers;
+        this.userManagement = userManagement;
         this.actor = SecurityContextHolder.getContext().getAuthentication();
         setSizeFull();
         configureGrid();
 
         Button logout = new Button("Sign out", event -> getUI().ifPresent(ui -> ui.getPage().setLocation("/logout")));
-        HorizontalLayout header = new HorizontalLayout(new H1("Service Desk"), logout);
+        HorizontalLayout header = new HorizontalLayout(new H1("Service Desk"));
+        if (isAdmin()) {
+            header.add(new Anchor("/users", "Manage users"));
+        }
+        header.add(logout);
         header.setWidthFull();
         header.setAlignItems(Alignment.CENTER);
         header.expand(header.getComponentAt(0));
@@ -148,9 +153,9 @@ public class RequestView extends VerticalLayout {
                                 + " — needs agent attention"));
         if (isAgentOrAdmin()) {
             ComboBox<String> assignee = new ComboBox<>("Assign to");
-            assignee.setItems(securityUsers.getAssignableUsernames());
+            assignee.setItems(userManagement.assignableUsernames());
             if (request.getAssignedAgentUsername() != null
-                    && securityUsers.isAssignable(request.getAssignedAgentUsername())) {
+                    && userManagement.isAssignableAgent(request.getAssignedAgentUsername())) {
                 assignee.setValue(request.getAssignedAgentUsername());
             }
             Button assign = new Button("Assign", event -> {
@@ -208,6 +213,11 @@ public class RequestView extends VerticalLayout {
         return actor != null && actor.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_AGENT")
                         || authority.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private boolean isAdmin() {
+        return actor != null && actor.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 
     private static String valueOrDash(String value) {

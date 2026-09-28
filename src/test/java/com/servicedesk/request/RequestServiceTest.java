@@ -1,7 +1,7 @@
 package com.servicedesk.request;
 
-import com.servicedesk.config.SecurityUsersProperties;
 import com.servicedesk.config.SlaProperties;
+import com.servicedesk.user.UserManagementService;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -32,7 +32,7 @@ class RequestServiceTest {
     private ServiceRequestRepository requests;
     private RequestCommentRepository comments;
     private RequestAuditRepository audit;
-    private SecurityUsersProperties securityUsers;
+    private UserManagementService userManagement;
     private SlaProperties slaProperties;
     private RequestService service;
 
@@ -41,10 +41,11 @@ class RequestServiceTest {
         requests = mock(ServiceRequestRepository.class);
         comments = mock(RequestCommentRepository.class);
         audit = mock(RequestAuditRepository.class);
-        securityUsers = users("agent", "AGENT", "admin", "ADMIN");
+        userManagement = mock(UserManagementService.class);
+        when(userManagement.isAssignableAgent("admin")).thenReturn(true);
         slaProperties = new SlaProperties();
         service = new RequestService(
-                requests, comments, audit, securityUsers, slaProperties, Clock.fixed(NOW, ZoneOffset.UTC));
+                requests, comments, audit, userManagement, slaProperties, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -148,6 +149,7 @@ class RequestServiceTest {
         ServiceRequest request = request(RequestStatus.NEW, NOW, NOW.plusSeconds(3600));
         when(requests.findById(1L)).thenReturn(Optional.of(request));
 
+        when(userManagement.isAssignableAgent("requester")).thenReturn(false);
         assertThrows(IllegalArgumentException.class,
                 () -> service.assign(user("agent", "AGENT"), 1L, "requester"));
     }
@@ -178,17 +180,4 @@ class RequestServiceTest {
                 name, "unused", List.of(new SimpleGrantedAuthority("ROLE_" + role)));
     }
 
-    private static SecurityUsersProperties users(String... usernamesAndRoles) {
-        SecurityUsersProperties properties = new SecurityUsersProperties();
-        List<SecurityUsersProperties.Account> accounts = new java.util.ArrayList<>();
-        for (int index = 0; index < usernamesAndRoles.length; index += 2) {
-            SecurityUsersProperties.Account account = new SecurityUsersProperties.Account();
-            account.setUsername(usernamesAndRoles[index]);
-            account.setRole(usernamesAndRoles[index + 1]);
-            account.setPassword("test-password");
-            accounts.add(account);
-        }
-        properties.setUsers(accounts);
-        return properties;
-    }
 }

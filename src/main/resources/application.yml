@@ -23,14 +23,6 @@ app:
   sla:
     target-duration: ${SLA_TARGET_DURATION:24h}
     breach-check-interval: ${SLA_BREACH_CHECK_INTERVAL:60000}
-  security:
-    users:
-      - username: ${SERVICEDESK_REQUESTER_USERNAME:requester}
-        password: ${SERVICEDESK_REQUESTER_PASSWORD:}
-        role: REQUESTER
-      - username: ${SERVICEDESK_AGENT_USERNAME:agent}
-        password: ${SERVICEDESK_AGENT_PASSWORD:}
-        role: AGENT
-      - username: ${SERVICEDESK_ADMIN_USERNAME:admin}
-        password: ${SERVICEDESK_ADMIN_PASSWORD:}
-        role: ADMIN
+  bootstrap-admin:
+    username: ${BOOTSTRAP_ADMIN_USERNAME:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
