@@ -8,7 +8,7 @@ Java 21 internal IT service desk MVP built as a modular monolith with Spring Boo
 
 ## Run with Docker Compose
 
-Docker Compose builds the Java application image, starts PostgreSQL, waits for the database health check, then starts the app. The database uses a named volume so its data survives container recreation. Set secrets in the current PowerShell session before the first start:
+Docker Compose builds the Java application image in Vaadin production mode, starts PostgreSQL, waits for the database health check, then starts the app. The database uses a named volume so its data survives container recreation. Set secrets in the current PowerShell session before the first start:
 
 ```powershell
 $env:DATABASE_PASSWORD = 'choose-a-unique-database-password'

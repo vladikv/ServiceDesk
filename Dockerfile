@@ -4,7 +4,7 @@ WORKDIR /workspace
 COPY pom.xml ./
 COPY src src
 
-RUN mvn -B -DskipTests package
+RUN mvn -B -Pproduction -DskipTests package
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
@@ -20,4 +20,4 @@ COPY --from=build --chown=servicedesk:servicedesk \
 
 USER servicedesk
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/service-desk.jar"]
+ENTRYPOINT ["java", "-Dvaadin.productionMode=true", "-jar", "/app/service-desk.jar"]
