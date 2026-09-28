@@ -1,7 +1,7 @@
 package com.servicedesk.request;
 
-import com.servicedesk.config.SecurityUsersProperties;
 import com.servicedesk.config.SlaProperties;
+import com.servicedesk.user.UserManagementService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -23,7 +23,7 @@ public class RequestService {
     private final ServiceRequestRepository requests;
     private final RequestCommentRepository comments;
     private final RequestAuditRepository audit;
-    private final SecurityUsersProperties securityUsers;
+    private final UserManagementService userManagement;
     private final SlaProperties slaProperties;
     private final Clock clock;
 
@@ -32,22 +32,22 @@ public class RequestService {
             ServiceRequestRepository requests,
             RequestCommentRepository comments,
             RequestAuditRepository audit,
-            SecurityUsersProperties securityUsers,
+            UserManagementService userManagement,
             SlaProperties slaProperties) {
-        this(requests, comments, audit, securityUsers, slaProperties, Clock.systemUTC());
+        this(requests, comments, audit, userManagement, slaProperties, Clock.systemUTC());
     }
 
     RequestService(
             ServiceRequestRepository requests,
             RequestCommentRepository comments,
             RequestAuditRepository audit,
-            SecurityUsersProperties securityUsers,
+            UserManagementService userManagement,
             SlaProperties slaProperties,
             Clock clock) {
         this.requests = requests;
         this.comments = comments;
         this.audit = audit;
-        this.securityUsers = securityUsers;
+        this.userManagement = userManagement;
         this.slaProperties = slaProperties;
         this.clock = clock;
     }
@@ -103,7 +103,7 @@ public class RequestService {
         if (assignee.length() > 120) {
             throw new IllegalArgumentException("Assignee name must be 120 characters or fewer.");
         }
-        if (!securityUsers.isAssignable(assignee)) {
+        if (!userManagement.isAssignableAgent(assignee)) {
             throw new IllegalArgumentException("Assignee must be a configured agent or admin.");
         }
         ServiceRequest request = findRequest(id);

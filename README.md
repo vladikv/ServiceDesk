@@ -15,19 +15,20 @@ CREATE USER servicedesk WITH PASSWORD 'change-this-local-password';
 CREATE DATABASE servicedesk OWNER servicedesk;
 ```
 
-Set a distinct password for each configured application role before starting the app. For PowerShell:
+On the first startup, set the bootstrap administrator credentials and database password. The bootstrap admin is created only when the users table is empty; later restarts do not recreate or overwrite it. For PowerShell:
 
 ```powershell
-$env:SERVICEDESK_REQUESTER_PASSWORD = 'requester-local-password'
-$env:SERVICEDESK_AGENT_PASSWORD = 'agent-local-password'
-$env:SERVICEDESK_ADMIN_PASSWORD = 'admin-local-password'
+$env:BOOTSTRAP_ADMIN_USERNAME = 'admin'
+$env:BOOTSTRAP_ADMIN_PASSWORD = 'use-a-unique-long-password'
 $env:DATABASE_PASSWORD = 'change-this-local-password'
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
-The configured usernames default to `requester`, `agent`, and `admin`; override them with the matching `SERVICEDESK_*_USERNAME` variables. Startup fails when any configured user password is blank. These application accounts are in-memory and must be replaced with the organization's identity provider or persistent account provisioning before production use.
+The bootstrap password is required only when no account exists; startup fails with a clear message if the users table is empty and either bootstrap value is missing. Usernames are normalized to lowercase. Passwords must be at least 12 characters and no more than 72 UTF-8 bytes because BCrypt limits the input size. Secrets are read from environment variables and should never be committed to the repository.
 
-Flyway applies schema changes from `src/main/resources/db/migration`. Hibernate validates the migrated schema at startup.
+There is no public registration. Sign in with the bootstrap admin, open **Manage users**, and create requester, agent, or admin accounts. Administrators can list accounts, enable/disable them, and reset passwords. Usernames are immutable and accounts are not deleted so historic request and audit references remain meaningful. The last active admin cannot be disabled.
+
+Flyway applies schema changes from `src/main/resources/db/migration`. Hibernate validates the migrated schema at startup. Passwords are stored as BCrypt hashes; disabled accounts cannot authenticate or be assigned to new requests.
 
 ## MVP workflow
 
