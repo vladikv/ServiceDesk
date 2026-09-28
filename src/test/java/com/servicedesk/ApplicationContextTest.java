@@ -2,6 +2,8 @@ package com.servicedesk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.servicedesk.config.SlaProperties;
 import com.servicedesk.user.BootstrapAdminInitializer;
@@ -13,15 +15,18 @@ import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:application;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
         "spring.datasource.username=sa",
@@ -47,6 +52,9 @@ class ApplicationContextTest {
     @Autowired
     private DeskUserRepository userRepository;
 
+    @Autowired
+    private MockMvc mockMvc;
+
     @Test
     @Transactional
     void bootstrapCreatesPersistentAdminWithEncodedPasswordAndIsIdempotent() {
@@ -63,6 +71,12 @@ class ApplicationContextTest {
         assertThat(passwordEncoder.matches("bootstrap-admin-password",
                 userRepository.findById("bootstrap-admin").orElseThrow().getPasswordHash())).isTrue();
         assertThat(slaProperties.getTargetDuration()).isEqualTo(Duration.ofHours(24));
+    }
+
+    @Test
+    void readinessEndpointIsAvailableWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk());
     }
 
     @Autowired

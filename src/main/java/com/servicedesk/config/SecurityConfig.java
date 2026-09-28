@@ -22,6 +22,8 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(authorize -> authorize.requestMatchers(
+                "/actuator/health", "/actuator/health/**").permitAll());
         super.configure(http);
         setLoginView(http, LoginView.class);
     }
