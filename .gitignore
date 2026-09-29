@@ -9,3 +9,14 @@ target/
 node_modules/
 src/main/frontend/generated/
 src/main/frontend/index.html
+
+# Terraform state, plans, provider cache, and local variable files
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfstate.lock.info
+infra/terraform/*.tfplan
+infra/terraform/crash.log
+infra/terraform/crash.*.log
+infra/terraform/terraform.tfvars
+infra/terraform/*.auto.tfvars
