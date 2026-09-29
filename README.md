@@ -17,7 +17,7 @@ Create and track service requests, coordinate agent work, and keep request histo
 
 ## Navigate
 
-| [Overview](#overview) | [Quick start](#quick-start) | [Work with requests](#work-with-requests) | [Accounts and roles](#accounts-and-roles) | [SLA](#service-level-agreement-sla) | [Configuration](#configuration) | [Architecture](#architecture) | [Troubleshooting](#troubleshooting) | [Tests](#tests) | [Status and license](#project-status-and-license) |
+| [Overview](#overview) | [Quick start](#quick-start) | [Work with requests](#work-with-requests) | [Accounts and roles](#accounts-and-roles) | [SLA](#service-level-agreement-sla) | [Configuration](#configuration) | [Architecture](#architecture) | [AWS infrastructure](#aws-infrastructure-learning) | [Troubleshooting](#troubleshooting) | [Tests](#tests) | [Status and license](#project-status-and-license) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
 ## Overview
@@ -179,6 +179,12 @@ flowchart LR
 | **Reports** | [`src/main/java/com/servicedesk/reporting`](src/main/java/com/servicedesk/reporting/) | Request counts by status and SLA breach totals. |
 | **Database** | [`src/main/resources/db/migration`](src/main/resources/db/migration/) | Versioned schema migrations managed by Flyway. |
 | **Local stack** | [`compose.yaml`](compose.yaml), [`Dockerfile`](Dockerfile) | Application and PostgreSQL containers, health checks, and persistent database volume. |
+
+## AWS infrastructure learning
+
+The [`infra/terraform`](infra/terraform/) directory contains a learning configuration for a single EC2 Docker host. It creates a small VPC and public subnet, installs Docker and Docker Compose, and grants the instance Systems Manager access. The instance security group has **no inbound rules**; use Systems Manager Session Manager rather than opening SSH.
+
+The [application CI workflow](.github/workflows/app-ci.yml) runs tests, builds the Docker image, and smoke-tests the app with PostgreSQL in a temporary GitHub Actions runner. It does not publish or deploy the image. The Terraform workflow checks formatting and validates the configuration only; it has no AWS credentials and never creates, changes, or destroys AWS resources. Read [`infra/README.md`](infra/README.md) for the architecture, costs, and safe learning steps.
 
 ## Troubleshooting
 
