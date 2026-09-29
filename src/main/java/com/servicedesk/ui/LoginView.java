@@ -1,6 +1,8 @@
 package com.servicedesk.ui;
 
 import com.vaadin.flow.component.login.LoginForm;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -18,8 +20,23 @@ public class LoginView extends VerticalLayout implements BeforeEnterObserver {
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
+        setPadding(true);
+        getStyle().set("background", "var(--lumo-contrast-5pct)");
+
+        H1 title = new H1("Service Desk");
+        title.getStyle().set("margin", "0");
+        Span description = new Span("Sign in to manage your service requests.");
+        description.getStyle().set("color", "var(--lumo-secondary-text-color)");
         loginForm.setAction("login");
-        add(loginForm);
+        loginForm.getStyle().set("width", "100%");
+        VerticalLayout panel = new VerticalLayout(title, description, loginForm);
+        panel.setWidth("min(26rem, 100%)");
+        panel.setPadding(true);
+        panel.setSpacing(true);
+        panel.getStyle().set("background", "var(--lumo-base-color)");
+        panel.getStyle().set("border-radius", "var(--lumo-border-radius-l)");
+        panel.getStyle().set("box-shadow", "var(--lumo-box-shadow-m)");
+        add(panel);
     }
 
     @Override
