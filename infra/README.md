@@ -16,7 +16,7 @@ flowchart LR
 
 The instance has a public IPv4 address so it can download operating-system packages and connect outbound to Systems Manager, but the security group allows no inbound traffic. Do not add an SSH or application ingress rule as part of this learning setup. An eventual app access/deployment design should add HTTPS deliberately rather than expose port 8080.
 
-The database is not moved to AWS in this first step. The application deployment, secrets handling, and CI/CD release pipeline are also intentionally left for later; the existing Compose stack remains the local development environment.
+The database is not moved to AWS in this first step. The application runtime deployment and production secrets handling are intentionally left for later; the existing Compose stack remains the local development environment. CI publishes a container image to GitHub Container Registry after checks pass on `main`, but does not deploy or run it.
 
 ## Cost and safety
 
@@ -24,7 +24,7 @@ Terraform itself and its local formatting/validation checks do not incur AWS cha
 
 There is no NAT Gateway, load balancer, RDS database, or Kubernetes cluster in this starter configuration. The root disk is deleted when the instance is terminated, so do not treat it as durable application-data storage.
 
-**No AWS resources have been created.** The application CI workflow runs tests, then builds and smoke-tests the app with PostgreSQL on a temporary GitHub Actions runner. It removes the containers and test database volume afterward; it does not publish or deploy the image. The Terraform workflow runs `terraform fmt`, `terraform init -backend=false`, and `terraform validate` without AWS credentials; it never runs `plan` or `apply`. Do not run `terraform apply` unless you have separately reviewed the plan, confirmed the expected cost and AWS account, and explicitly approved deployment. Destroying the instance deletes its root disk and data.
+**No AWS resources have been created.** The application CI workflow runs tests, then builds and smoke-tests the app with PostgreSQL on a temporary GitHub Actions runner. It removes the containers and test database volume afterward. When checks pass on `main`, a separate job publishes the image to the private-by-default GHCR package `ghcr.io/vladikv/servicedesk`, tagged `latest` and with the commit SHA. GHCR storage and transfer may be subject to GitHub plan limits or charges; check the current [GitHub Packages billing details](https://docs.github.com/billing/managing-billing-for-your-products/managing-billing-for-github-packages/about-billing-for-github-packages) before relying on it. Publishing an image does not deploy or run the app. The Terraform workflow runs `terraform fmt`, `terraform init -backend=false`, and `terraform validate` without AWS credentials; it never runs `plan` or `apply`. Do not run `terraform apply` unless you have separately reviewed the plan, confirmed the expected cost and AWS account, and explicitly approved deployment. Destroying the instance deletes its root disk and data.
 
 ## Learn and validate without AWS
 
