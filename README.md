@@ -184,7 +184,7 @@ flowchart LR
 
 The [`infra/terraform`](infra/terraform/) directory contains a learning configuration for a single EC2 Docker host. It creates a small VPC and public subnet, installs Docker and Docker Compose, and grants the instance Systems Manager access. The instance security group has **no inbound rules**; use Systems Manager Session Manager rather than opening SSH.
 
-The [application CI workflow](.github/workflows/app-ci.yml) runs tests, builds the Docker image, and smoke-tests the app with PostgreSQL in a temporary GitHub Actions runner. It does not publish or deploy the image. The Terraform workflow checks formatting and validates the configuration only; it has no AWS credentials and never creates, changes, or destroys AWS resources. Read [`infra/README.md`](infra/README.md) for the architecture, costs, and safe learning steps.
+The [application CI workflow](.github/workflows/app-ci.yml) runs tests, builds the Docker image, and smoke-tests the app with PostgreSQL in a temporary GitHub Actions runner. After those checks pass on `main`, it publishes the image to the private-by-default GitHub Container Registry package `ghcr.io/vladikv/servicedesk`, tagged `latest` and with the commit SHA. This is Continuous Delivery: it stores a deployable image but does not run the app on a server. There are no AWS credentials or deployment steps. The Terraform workflow checks formatting and validates the configuration only; it never creates, changes, or destroys AWS resources. Read [`infra/README.md`](infra/README.md) for the architecture, costs, and safe learning steps.
 
 ## Troubleshooting
 
